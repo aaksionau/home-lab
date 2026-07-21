@@ -69,8 +69,13 @@ resource "kubernetes_deployment_v1" "kafka" {
             value = "PLAINTEXT://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093"
           }
           env {
-            name  = "KAFKA_ADVERTISED_LISTENERS"
-            value = "PLAINTEXT://kafka:29092"
+            name = "KAFKA_ADVERTISED_LISTENERS"
+            # Must explicitly include CONTROLLER too, even though it's not
+            # meant to be client-facing -- if omitted, Kafka auto-derives it
+            # from KAFKA_LISTENERS (now 0.0.0.0) and then wrongly validates
+            # that auto-derived value as needing to be routable. Known
+            # Kafka 3.9.0 bug: https://issues.apache.org/jira/browse/KAFKA-18281
+            value = "PLAINTEXT://kafka:29092,CONTROLLER://kafka:9093"
           }
           env {
             name  = "KAFKA_LISTENER_SECURITY_PROTOCOL_MAP"
