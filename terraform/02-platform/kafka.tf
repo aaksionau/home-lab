@@ -85,12 +85,20 @@ resource "kubernetes_deployment_v1" "kafka" {
           }
           env {
             name = "KAFKA_ADVERTISED_LISTENERS"
-            # PLAINTEXT stays on the Service name -- that's the stable
-            # address other pods (the app services) connect to. CONTROLLER
-            # must still be explicit (see KAFKA-18281 above), but uses
-            # POD_IP rather than the Service name to avoid the hairpin
-            # self-connection problem.
-            value = "PLAINTEXT://kafka:29092,CONTROLLER://$(POD_IP):9093"
+            # Both use POD_IP, not the Service name. Kafka clients (including
+            # our own readiness probe) only use the bootstrap-server address
+            # (the "kafka" Service) for their *first* connection -- metadata
+            # comes back pointing at whatever's in advertised.listeners, and
+            # every request after that reconnects there directly. If that's
+            # the Service name, it resolves to the ClusterIP and hits the
+            # same hairpin self-connection failure CONTROLLER did, just for
+            # PLAINTEXT instead. Pod IPs are directly routable cluster-wide
+            # (a basic CNI guarantee, no NAT involved), so advertising the
+            # real pod IP sidesteps the problem entirely -- for the probe
+            # and for real traffic from other services. The "kafka" Service
+            # name still works fine as the stable *bootstrap* address other
+            # pods use to find whichever pod is currently running.
+            value = "PLAINTEXT://$(POD_IP):29092,CONTROLLER://$(POD_IP):9093"
           }
           env {
             name  = "KAFKA_LISTENER_SECURITY_PROTOCOL_MAP"
