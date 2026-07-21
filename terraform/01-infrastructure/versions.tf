@@ -4,7 +4,11 @@ terraform {
   required_providers {
     libvirt = {
       source  = "dmacvicar/libvirt"
-      version = "~> 0.8"
+      # v0.9+ is a from-scratch, breaking rewrite with an entirely different
+      # (attribute-based) schema. Pin to the 0.8.x line with the classic
+      # block-based schema this config is written against — "~> 0.8" alone
+      # would still float up to 0.9.x since it only has two version parts.
+      version = "~> 0.8.0"
     }
     docker = {
       source  = "kreuzwerker/docker"
