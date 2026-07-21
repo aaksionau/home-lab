@@ -1,12 +1,12 @@
 provider "libvirt" {
-  # Requires passwordless SSH (key-based) from the machine running
-  # `terraform apply` to ${var.server_user}@${var.server_host} already working,
-  # e.g. `ssh ${var.server_user}@${var.server_host}` succeeds with no prompt.
-  # The provider does its own SSH connection (Go-native, not the system `ssh`
-  # binary), so `keyfile` must be an absolute path — it won't expand `~`.
-  uri = "qemu+ssh://${var.server_user}@${var.server_host}/system?keyfile=${pathexpand(var.ssh_private_key_path)}&sshauth=privkey"
+  # Assumes Terraform runs directly on the Ubuntu/libvirt host itself (as
+  # documented in the README) — so this connects locally, no SSH involved.
+  # Requires the user running `terraform apply` to be in the `libvirt` group.
+  uri = "qemu:///system"
 }
 
 provider "docker" {
-  host = "ssh://${var.server_user}@${var.server_host}:22"
+  # Local Docker socket — requires the user running `terraform apply` to be
+  # in the `docker` group.
+  host = "unix:///var/run/docker.sock"
 }
