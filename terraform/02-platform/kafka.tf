@@ -51,6 +51,21 @@ resource "kubernetes_deployment_v1" "kafka" {
           }
 
           env {
+            # Single-node KRaft: this broker is the only controller, voting
+            # for itself. Routing that self-connection through the Service
+            # ClusterIP relies on hairpin NAT working, which isn't reliable
+            # here -- use the pod's own real IP instead. $(POD_IP) below is
+            # Kubernetes' dependent-env-var substitution, resolved before the
+            # container starts; it requires POD_IP to be defined earlier in
+            # this list, which is why it's first.
+            name = "POD_IP"
+            value_from {
+              field_ref {
+                field_path = "status.podIP"
+              }
+            }
+          }
+          env {
             name  = "KAFKA_NODE_ID"
             value = "1"
           }
@@ -70,12 +85,12 @@ resource "kubernetes_deployment_v1" "kafka" {
           }
           env {
             name = "KAFKA_ADVERTISED_LISTENERS"
-            # Must explicitly include CONTROLLER too, even though it's not
-            # meant to be client-facing -- if omitted, Kafka auto-derives it
-            # from KAFKA_LISTENERS (now 0.0.0.0) and then wrongly validates
-            # that auto-derived value as needing to be routable. Known
-            # Kafka 3.9.0 bug: https://issues.apache.org/jira/browse/KAFKA-18281
-            value = "PLAINTEXT://kafka:29092,CONTROLLER://kafka:9093"
+            # PLAINTEXT stays on the Service name -- that's the stable
+            # address other pods (the app services) connect to. CONTROLLER
+            # must still be explicit (see KAFKA-18281 above), but uses
+            # POD_IP rather than the Service name to avoid the hairpin
+            # self-connection problem.
+            value = "PLAINTEXT://kafka:29092,CONTROLLER://$(POD_IP):9093"
           }
           env {
             name  = "KAFKA_LISTENER_SECURITY_PROTOCOL_MAP"
@@ -87,7 +102,7 @@ resource "kubernetes_deployment_v1" "kafka" {
           }
           env {
             name  = "KAFKA_CONTROLLER_QUORUM_VOTERS"
-            value = "1@kafka:9093"
+            value = "1@$(POD_IP):9093"
           }
           env {
             name  = "KAFKA_INTER_BROKER_LISTENER_NAME"
@@ -126,7 +141,11 @@ resource "kubernetes_deployment_v1" "kafka" {
 
           readiness_probe {
             exec {
-              command = ["/opt/kafka/bin/kafka-broker-api-versions.sh", "--bootstrap-server", "kafka:29092"]
+              # localhost, not the Service name -- this runs inside the pod
+              # itself, so there's no reason to route it through the Service
+              # (and thus no risk of hitting the same hairpin issue as the
+              # controller self-connection above).
+              command = ["/opt/kafka/bin/kafka-broker-api-versions.sh", "--bootstrap-server", "localhost:29092"]
             }
             initial_delay_seconds = 15
             period_seconds         = 10
