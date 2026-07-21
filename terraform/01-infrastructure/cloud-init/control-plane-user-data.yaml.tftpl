@@ -1,0 +1,31 @@
+#cloud-config
+hostname: weather-k3s-control-plane
+package_update: true
+package_upgrade: false
+
+users:
+  - name: ${ssh_user}
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - ${ssh_public_key}
+
+write_files:
+  - path: /etc/rancher/k3s/registries.yaml
+    permissions: "0644"
+    content: |
+      mirrors:
+        "${registry_host}":
+          endpoint:
+            - "http://${registry_host}"
+
+runcmd:
+  - mkdir -p /etc/rancher/k3s
+  - >
+    curl -sfL https://get.k3s.io |
+    INSTALL_K3S_VERSION="${k3s_version}"
+    K3S_TOKEN="${k3s_token}"
+    sh -s - server
+    --node-taint CriticalAddonsOnly=true:NoExecute
+    --tls-san ${control_plane_ip}
+    --write-kubeconfig-mode 644

@@ -1,0 +1,11 @@
+version: 2
+ethernets:
+  eth0:
+    match:
+      macaddress: "${mac_address}"
+    set-name: eth0
+    addresses:
+      - ${ip_address}/${prefix_length}
+    gateway4: ${gateway}
+    nameservers:
+      addresses: [${join(", ", dns_servers)}]

@@ -1,0 +1,15 @@
+# Copy to terraform.tfvars and fill in your actual values.
+
+server_host           = "192.168.1.50"   # the Ubuntu server's current LAN IP
+server_user            = "ubuntu"
+ssh_private_key_path   = "~/.ssh/id_ed25519"
+ssh_public_key          = "ssh-ed25519 AAAA... you@yourmachine"
+
+host_physical_interface = "enp1s0"        # `ip a` on the server to find the real NIC name
+
+lan_subnet_cidr = "192.168.1.0/24"
+lan_gateway     = "192.168.1.1"
+lan_dns_servers = ["1.1.1.1", "8.8.8.8"]
+
+control_plane_ip = "192.168.1.60"          # pick free static IPs outside your router's DHCP range
+worker_ip        = "192.168.1.61"
