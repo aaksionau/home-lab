@@ -88,10 +88,27 @@ resource "kubernetes_deployment_v1" "kafka" {
             name  = "CLUSTER_ID"
             value = "MkU3OEVBNTcwNTJENDM2Qk"
           }
+          env {
+            # Keep the JVM heap comfortably under the memory limit below —
+            # otherwise it sizes itself off host memory and gets OOM-killed.
+            name  = "KAFKA_HEAP_OPTS"
+            value = "-Xmx768m -Xms512m"
+          }
 
           volume_mount {
             name       = "data"
             mount_path = "/var/lib/kafka/data"
+          }
+
+          resources {
+            requests = {
+              cpu    = "300m"
+              memory = "768Mi"
+            }
+            limits = {
+              cpu    = "1"
+              memory = "1536Mi"
+            }
           }
 
           readiness_probe {

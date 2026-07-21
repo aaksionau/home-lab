@@ -48,6 +48,17 @@ resource "kubernetes_deployment_v1" "gateway_api" {
             value = "weather.raw"
           }
 
+          resources {
+            requests = {
+              cpu    = "100m"
+              memory = "128Mi"
+            }
+            limits = {
+              cpu    = "500m"
+              memory = "384Mi"
+            }
+          }
+
           readiness_probe {
             http_get {
               path = "/health"
@@ -126,6 +137,17 @@ resource "kubernetes_deployment_v1" "processor_worker" {
               }
             }
           }
+
+          resources {
+            requests = {
+              cpu    = "100m"
+              memory = "128Mi"
+            }
+            limits = {
+              cpu    = "500m"
+              memory = "384Mi"
+            }
+          }
         }
       }
     }
@@ -190,6 +212,17 @@ resource "kubernetes_deployment_v1" "rules_worker" {
             name  = "BlobStorage__RulesBlobName"
             value = "weather-alert-rules.json"
           }
+
+          resources {
+            requests = {
+              cpu    = "100m"
+              memory = "128Mi"
+            }
+            limits = {
+              cpu    = "500m"
+              memory = "384Mi"
+            }
+          }
         }
       }
     }
@@ -230,6 +263,17 @@ resource "kubernetes_deployment_v1" "dashboard_api" {
                 name = kubernetes_secret_v1.postgres.metadata[0].name
                 key  = "CONNECTION_STRING"
               }
+            }
+          }
+
+          resources {
+            requests = {
+              cpu    = "100m"
+              memory = "128Mi"
+            }
+            limits = {
+              cpu    = "500m"
+              memory = "384Mi"
             }
           }
 
@@ -287,6 +331,17 @@ resource "kubernetes_deployment_v1" "dashboard_web" {
           image = local.images.dashboard_web
 
           port { container_port = 80 }
+
+          resources {
+            requests = {
+              cpu    = "20m"
+              memory = "32Mi"
+            }
+            limits = {
+              cpu    = "200m"
+              memory = "128Mi"
+            }
+          }
         }
       }
     }

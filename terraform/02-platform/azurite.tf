@@ -53,6 +53,17 @@ resource "kubernetes_deployment_v1" "azurite" {
             name       = "data"
             mount_path = "/data"
           }
+
+          resources {
+            requests = {
+              cpu    = "50m"
+              memory = "64Mi"
+            }
+            limits = {
+              cpu    = "300m"
+              memory = "256Mi"
+            }
+          }
         }
 
         volume {

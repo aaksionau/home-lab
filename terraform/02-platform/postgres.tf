@@ -78,6 +78,17 @@ resource "kubernetes_deployment_v1" "postgres" {
             mount_path = "/var/lib/postgresql/data"
           }
 
+          resources {
+            requests = {
+              cpu    = "200m"
+              memory = "256Mi"
+            }
+            limits = {
+              cpu    = "1"
+              memory = "1Gi"
+            }
+          }
+
           readiness_probe {
             exec {
               command = ["pg_isready", "-U", "weather", "-d", "weather"]
