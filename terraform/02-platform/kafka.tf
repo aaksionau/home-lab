@@ -158,6 +158,12 @@ resource "kubernetes_deployment_v1" "kafka" {
             initial_delay_seconds = 15
             period_seconds         = 10
             failure_threshold      = 10
+            # Default timeout is 1s -- too tight for a command that starts a
+            # whole new JVM on every single invocation. It works fine when
+            # run manually (no timeout), which is exactly the symptom this
+            # produces: probe fails forever even though the command is
+            # genuinely correct and would succeed given more than 1s.
+            timeout_seconds = 10
           }
         }
 
