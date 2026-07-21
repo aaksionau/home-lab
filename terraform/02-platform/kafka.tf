@@ -59,8 +59,14 @@ resource "kubernetes_deployment_v1" "kafka" {
             value = "broker,controller"
           }
           env {
-            name  = "KAFKA_LISTENERS"
-            value = "PLAINTEXT://kafka:29092,CONTROLLER://kafka:9093"
+            name = "KAFKA_LISTENERS"
+            # Bind to the wildcard address, not the Service DNS name -- "kafka"
+            # resolves to the Service's ClusterIP, which no pod actually owns
+            # on its own network interface, so binding to it fails with
+            # "Address not available". KAFKA_ADVERTISED_LISTENERS (below) is
+            # the one that should use the Service name -- that's what other
+            # pods connect to, a separate concern from what this pod binds to.
+            value = "PLAINTEXT://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093"
           }
           env {
             name  = "KAFKA_ADVERTISED_LISTENERS"
