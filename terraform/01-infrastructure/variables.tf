@@ -20,9 +20,10 @@ variable "ssh_public_key" {
   type        = string
 }
 
-variable "host_physical_interface" {
-  description = "Name of the physical NIC on the Ubuntu server to attach the VMs to via macvtap bridge mode, e.g. 'enp1s0' (find with `ip a` on the server). VMs get real LAN IPs directly off this interface, no host bridge needed."
+variable "libvirt_bridge_name" {
+  description = "Name of the Linux bridge on the Ubuntu server the VMs attach to (see README's netplan setup — a real bridge is required so the host itself can reach the VMs, which macvtap cannot do)."
   type        = string
+  default     = "br0"
 }
 
 variable "lan_subnet_cidr" {

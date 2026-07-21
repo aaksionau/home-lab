@@ -66,7 +66,7 @@ resource "libvirt_domain" "control_plane" {
   cloudinit = libvirt_cloudinit_disk.control_plane.id
 
   network_interface {
-    macvtap        = var.host_physical_interface
+    bridge         = var.libvirt_bridge_name
     mac            = local.control_plane_mac
     wait_for_lease = false
   }
@@ -96,7 +96,7 @@ resource "libvirt_domain" "worker" {
   cloudinit = libvirt_cloudinit_disk.worker.id
 
   network_interface {
-    macvtap        = var.host_physical_interface
+    bridge         = var.libvirt_bridge_name
     mac            = local.worker_mac
     wait_for_lease = false
   }

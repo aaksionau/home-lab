@@ -23,24 +23,112 @@ Ubuntu host (KVM/libvirt)
             └── dashboard-web  (NodePort 30190 — browser dashboard)
 ```
 
-Both VMs get real LAN IPs via **macvtap** (bridge mode) straight off the
-host's physical NIC — no Linux bridge needed on the host, so there's no risk
-of the apply cutting off SSH to the host itself.
+Both VMs attach to a real Linux bridge (`br0`) on the host, not macvtap.
+Macvtap was the original design (avoids touching host networking at all),
+but it has a hard limitation: the host itself can't reach VMs sharing its
+own physical NIC that way, only other LAN devices can. Since Terraform (and
+`kubectl` afterwards) runs directly on this host, that limitation is fatal —
+a real bridge doesn't have it, at the cost of a one-time host networking
+change (see below).
 
 ## Prerequisites
 
-1. **Run Terraform from WSL/Linux/macOS, not native Windows.** The libvirt
-   provider needs the libvirt client library, which isn't available on
-   Windows. From this Windows machine, use WSL2.
-2. Passwordless SSH key auth from wherever you run `terraform apply` to the
-   Ubuntu server (`ssh ubuntu@<server-ip>` with no prompt).
-3. On the Ubuntu server: `libvirtd`, `qemu-kvm`, and Docker installed, and
-   your SSH user in the `libvirt` and `docker` groups.
-4. Terraform >= 1.7 installed where you run `apply`.
-5. Two free static IPs on your LAN (outside your router's DHCP range) for
-   the control-plane and worker VMs.
-6. The physical NIC name on the server (`ip a` on the server — the interface
-   with your LAN IP on it, e.g. `enp1s0`).
+1. **Terraform runs directly on the Ubuntu/libvirt host itself** — SSH in
+   and run it there, not from a separate WSL2/Windows machine. This is a
+   deliberate choice, not just a convenience: the VMs' network setup (below)
+   requires the host to reach them directly, so splitting Terraform onto a
+   different machine reintroduces exactly the problem the bridge solves.
+2. **A Linux bridge (`br0`) with your physical NIC enslaved to it** — see
+   "Host networking setup" below. This is the riskiest one-time step, since
+   it reconfigures the network interface carrying your SSH session.
+3. On the server: `libvirtd`, `qemu-system-x86` (Ubuntu dropped the
+   `qemu-kvm` metapackage name — installing that by name will fail),
+   `genisoimage` (provides `mkisofs`, required to build the cloud-init ISO
+   disks — the apply fails with `mkisofs: executable file not found` without
+   it), and Docker. Your login user needs to be in the `libvirt`, `kvm`, and
+   `docker` groups.
+   ```bash
+   sudo apt update
+   sudo apt install -y qemu-system-x86 libvirt-daemon-system libvirt-clients \
+     bridge-utils virtinst cpu-checker genisoimage
+   curl -fsSL https://get.docker.com | sh
+   sudo usermod -aG libvirt,kvm,docker $USER
+   # log out/in (or `newgrp`) for group membership to take effect
+   ```
+4. **An AppArmor override for the custom storage pool path** — see
+   "AppArmor override" below. Ubuntu confines each VM's QEMU process by
+   default; without this, VM disks fail with `Could not open ... Permission
+   denied` even when the underlying Unix file permissions are correct.
+5. Terraform >= 1.7 installed on the server.
+6. Two free static IPs on your LAN (outside your router's DHCP range) for
+   the control-plane and worker VMs — reserve them in your router against
+   the fixed MACs already in `locals.tf` (`52:54:00:12:34:01` /
+   `52:54:00:12:34:02`), not against a DHCP-assigned address, since the VMs
+   get static IPs via cloud-init, not DHCP.
+7. **An SSH key pair on the server itself** (not on a separate dev machine)
+   — `ssh_public_key` in tfvars gets injected into both VMs via cloud-init;
+   `ssh_private_key_path` is what Terraform uses afterwards to SSH in and
+   fetch the kubeconfig.
+
+## Host networking setup (one-time)
+
+Check your current config first (`cat /etc/netplan/*.yaml` — likely one
+file, DHCP on your physical interface). Rewrite it to bridge that interface,
+keeping the same MAC on the bridge so DHCP hands out the same IP:
+
+```yaml
+network:
+  ethernets:
+    eno1:                          # your physical NIC — `ip a` to confirm
+      dhcp4: false
+      dhcp6: false
+      match:
+        macaddress: e4:54:e8:56:d3:13   # that NIC's real MAC
+      set-name: eno1
+  bridges:
+    br0:
+      interfaces: [eno1]
+      macaddress: e4:54:e8:56:d3:13     # same MAC, so the DHCP lease carries over
+      dhcp4: true
+      dhcp6: true
+  version: 2
+```
+
+Apply it with `sudo netplan try`, **not** `netplan apply` — since this
+reconfigures the interface carrying your current SSH session, `try` is what
+makes it safe: it auto-reverts after ~120s unless you explicitly confirm
+(press Enter) within that window. If your session survives the switchover,
+confirm it. If it drops entirely, don't do anything — wait out the timeout
+and it reverts on its own; no lockout. (Skip any custom bridge `parameters:`
+like `stp`/`forward-delay` — `netplan try`'s rollback can't safely undo
+those and will refuse to run at all if it sees them.)
+
+Confirm afterwards: `ip a show br0` should show the IP; `bridge link show`
+should list your physical NIC as a member in `forwarding` state.
+
+## AppArmor override (one-time)
+
+Ubuntu's libvirt/AppArmor integration only auto-whitelists the default
+`/var/lib/libvirt/images` pool for VM disk access. This project uses a
+custom pool (`weather-k3s`) at the same parent path, which isn't covered —
+VMs fail to start with a `Permission denied` on the disk file otherwise.
+
+```bash
+sudo mkdir -p /etc/apparmor.d/abstractions/libvirt-qemu.d
+echo '  /var/lib/libvirt/images/weather-k3s/** rwk,' | \
+  sudo tee /etc/apparmor.d/abstractions/libvirt-qemu.d/weather-k3s
+sudo systemctl reload apparmor
+```
+
+You'll also need the pool directory itself to be traversable and its files
+readable by the unprivileged user Ubuntu runs QEMU as (`libvirt-qemu`) —
+this is normally handled automatically for volumes Terraform creates, but
+if you ever hit a plain (non-AppArmor) permission error here too:
+
+```bash
+sudo chmod 755 /var/lib/libvirt/images/weather-k3s
+sudo find /var/lib/libvirt/images/weather-k3s -type f -exec chmod 644 {} \;
+```
 
 ## Deploy order
 
