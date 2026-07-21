@@ -98,3 +98,15 @@ variable "registry_port" {
   type        = number
   default     = 5000
 }
+
+variable "github_repo_url" {
+  description = "URL of the weather-home-station GitHub repo the self-hosted CI runner registers against."
+  type        = string
+  default     = "https://github.com/aaksionau/weather-home-station"
+}
+
+variable "github_runner_pat" {
+  description = "GitHub personal access token used to self-register the CI runner (fine-grained: 'Administration' repo permission, read/write, scoped to weather-home-station only; classic: 'repo' scope). Set this in terraform.tfvars, never commit it."
+  type        = string
+  sensitive   = true
+}

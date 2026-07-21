@@ -13,3 +13,7 @@ lan_dns_servers = ["1.1.1.1", "8.8.8.8"]
 
 control_plane_ip = "192.168.1.60"          # pick free static IPs outside your router's DHCP range
 worker_ip        = "192.168.1.61"
+
+# github.com/settings/tokens?type=beta -> fine-grained token scoped to just
+# aaksionau/weather-home-station, "Administration" repo permission: read/write.
+github_runner_pat = "github_pat_..."

@@ -9,6 +9,7 @@ Ubuntu host) running a 2-node k3s cluster for the
 ```
 Ubuntu host (KVM/libvirt)
 ├── weather-registry          plain Docker registry, host:5000, holds the 5 app images
+├── weather-ci-runner          self-hosted GitHub Actions runner — builds + pushes only, never deploys
 ├── VM: control-plane          2 vCPU / 4GB — k3s server, tainted (no workloads)
 └── VM: worker                 4 vCPU / 24GB — k3s agent, runs everything below
         └── namespace: weather
@@ -68,7 +69,25 @@ Then:
 - Dashboard: `http://<worker-ip>:30190`
 - Point the ESP32 station at: `http://<worker-ip>:30135`
 
-## Redeploying after a code change
+## CI/CD
+
+Pushing to `main` on `weather-home-station` triggers
+[`.github/workflows/build-and-push.yml`](../weather-home-station/.github/workflows/build-and-push.yml)
+on the self-hosted runner (`weather-ci-runner`, provisioned by
+`ci-runner.tf`): it builds all 5 images, tags them with the commit SHA, and
+pushes them to the registry. **It stops there — deploying is always a
+manual step**, so a bad build never touches the running cluster on its own.
+
+The workflow's job summary prints the exact command to run. It looks like:
+
+```bash
+cd terraform/02-platform
+terraform apply -var="image_tag=<commit-sha-from-the-Actions-run>"
+```
+
+For a one-off build without going through CI (e.g. testing a change before
+pushing), `scripts/build-and-push.sh` still works the same way it always
+did:
 
 ```bash
 cd scripts
@@ -77,6 +96,15 @@ cd ../terraform/02-platform
 # bump image_tag = "v2" in terraform.tfvars
 terraform apply
 ```
+
+**Runner setup, one-time:** create a GitHub fine-grained personal access
+token scoped to just `weather-home-station`, with the "Administration"
+repository permission set to read/write (that's what lets it register
+itself as a runner). Put it in `github_runner_pat` in
+`terraform/01-infrastructure/terraform.tfvars` and `terraform apply`. The
+runner is given the host's Docker socket so it can build/push images
+itself — equivalent to root on the host, which is fine for a single-user
+box but worth knowing.
 
 ## Notes / things you'll likely want to change later
 
@@ -88,3 +116,6 @@ terraform apply
   without locking that down.
 - `kubeconfig.yaml` in `terraform/01-infrastructure/` has full cluster-admin
   access — treat it like a credential (it's already `.gitignore`d).
+- `terraform/01-infrastructure/terraform.tfstate` now holds your GitHub PAT
+  in plaintext (Terraform state isn't encrypted at rest) — it's already
+  `.gitignore`d, but don't hand that file to anyone.
