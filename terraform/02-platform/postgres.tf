@@ -100,7 +100,7 @@ resource "kubernetes_deployment_v1" "postgres" {
               command = ["pg_isready", "-U", "weather", "-d", "weather"]
             }
             initial_delay_seconds = 5
-            period_seconds         = 10
+            period_seconds        = 10
           }
         }
 

@@ -2,11 +2,11 @@ locals {
   ns = kubernetes_namespace_v1.weather.metadata[0].name
 
   images = {
-    gateway_api       = "${var.registry_host}/weather/weather-gateway-api:${var.image_tag}"
-    processor_worker  = "${var.registry_host}/weather/weather-processor-worker:${var.image_tag}"
-    rules_worker      = "${var.registry_host}/weather/weather-rules-worker:${var.image_tag}"
-    dashboard_api     = "${var.registry_host}/weather/dashboard-api:${var.image_tag}"
-    dashboard_web     = "${var.registry_host}/weather/dashboard-web:${var.image_tag}"
+    gateway_api      = "${var.registry_host}/weather/weather-gateway-api:${var.image_tag}"
+    processor_worker = "${var.registry_host}/weather/weather-processor-worker:${var.image_tag}"
+    rules_worker     = "${var.registry_host}/weather/weather-rules-worker:${var.image_tag}"
+    dashboard_api    = "${var.registry_host}/weather/dashboard-api:${var.image_tag}"
+    dashboard_web    = "${var.registry_host}/weather/dashboard-web:${var.image_tag}"
   }
 
   azurite_connection_string = "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;"
@@ -47,6 +47,18 @@ resource "kubernetes_deployment_v1" "gateway_api" {
             name  = "Kafka__WeatherReadingsTopic"
             value = "weather.raw"
           }
+          env {
+            name  = "OTEL_SERVICE_NAME"
+            value = "weather-gateway-api"
+          }
+          env {
+            name  = "OTEL_EXPORTER_OTLP_ENDPOINT"
+            value = "http://otel-collector:4317"
+          }
+          env {
+            name  = "OTEL_METRIC_EXPORT_INTERVAL"
+            value = "15000"
+          }
 
           resources {
             requests = {
@@ -65,7 +77,7 @@ resource "kubernetes_deployment_v1" "gateway_api" {
               port = 8080
             }
             initial_delay_seconds = 5
-            period_seconds         = 10
+            period_seconds        = 10
           }
         }
       }
@@ -80,8 +92,8 @@ resource "kubernetes_service_v1" "gateway_api" {
   }
 
   spec {
-    selector     = { app = "weather-gateway-api" }
-    type         = "NodePort"
+    selector = { app = "weather-gateway-api" }
+    type     = "NodePort"
 
     port {
       port        = 8080
@@ -136,6 +148,18 @@ resource "kubernetes_deployment_v1" "processor_worker" {
                 key  = "CONNECTION_STRING"
               }
             }
+          }
+          env {
+            name  = "OTEL_SERVICE_NAME"
+            value = "weather-processor-worker"
+          }
+          env {
+            name  = "OTEL_EXPORTER_OTLP_ENDPOINT"
+            value = "http://otel-collector:4317"
+          }
+          env {
+            name  = "OTEL_METRIC_EXPORT_INTERVAL"
+            value = "15000"
           }
 
           resources {
@@ -212,6 +236,18 @@ resource "kubernetes_deployment_v1" "rules_worker" {
             name  = "BlobStorage__RulesBlobName"
             value = "weather-alert-rules.json"
           }
+          env {
+            name  = "OTEL_SERVICE_NAME"
+            value = "weather-rules-worker"
+          }
+          env {
+            name  = "OTEL_EXPORTER_OTLP_ENDPOINT"
+            value = "http://otel-collector:4317"
+          }
+          env {
+            name  = "OTEL_METRIC_EXPORT_INTERVAL"
+            value = "15000"
+          }
 
           resources {
             requests = {
@@ -265,6 +301,18 @@ resource "kubernetes_deployment_v1" "dashboard_api" {
               }
             }
           }
+          env {
+            name  = "OTEL_SERVICE_NAME"
+            value = "weather-dashboard-api"
+          }
+          env {
+            name  = "OTEL_EXPORTER_OTLP_ENDPOINT"
+            value = "http://otel-collector:4317"
+          }
+          env {
+            name  = "OTEL_METRIC_EXPORT_INTERVAL"
+            value = "15000"
+          }
 
           resources {
             requests = {
@@ -283,7 +331,7 @@ resource "kubernetes_deployment_v1" "dashboard_api" {
               port = 8080
             }
             initial_delay_seconds = 5
-            period_seconds         = 10
+            period_seconds        = 10
           }
         }
       }

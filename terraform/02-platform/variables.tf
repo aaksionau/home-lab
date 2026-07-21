@@ -37,3 +37,9 @@ variable "dashboard_node_port" {
   type        = number
   default     = 30190
 }
+
+variable "grafana_node_port" {
+  description = "NodePort Grafana is exposed on."
+  type        = number
+  default     = 30300
+}

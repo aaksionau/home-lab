@@ -20,7 +20,11 @@ Ubuntu host (KVM/libvirt)
             ├── weather-processor-worker
             ├── weather-rules-worker
             ├── dashboard-api  (ClusterIP only, proxied by dashboard-web)
-            └── dashboard-web  (NodePort 30190 — browser dashboard)
+            ├── dashboard-web  (NodePort 30190 — browser dashboard)
+            ├── otel-collector (ClusterIP — OTLP receiver for all 4 .NET services)
+            ├── prometheus     (ClusterIP — scrapes otel-collector)
+            ├── loki           (ClusterIP — logs, via otel-collector)
+            └── grafana        (NodePort 30300 — dashboards + log explore)
 ```
 
 Both VMs attach to a real Linux bridge (`br0`) on the host, not macvtap.
@@ -156,6 +160,7 @@ terraform apply
 Then:
 - Dashboard: `http://<worker-ip>:30190`
 - Point the ESP32 station at: `http://<worker-ip>:30135`
+- Grafana: `http://<worker-ip>:30300` (anonymous access, Admin role — see notes below)
 
 ## CI/CD
 
@@ -202,6 +207,12 @@ box but worth knowing.
 - The registry is unauthenticated and only reachable on your LAN
   (`registry_port`, default 5000) — don't expose the host to the internet
   without locking that down.
+- Grafana (`grafana_node_port`, default 30300) has anonymous access enabled
+  with the Admin role, same as the docker-compose stack — fine on a
+  LAN-only NodePort, not fine if you ever expose this host to the internet.
+- Prometheus and Loki have no retention/backup policy beyond their PVC size
+  (10Gi each) — fine for a homelab, but they'll eventually fill up and need
+  either a retention setting or a bigger PVC.
 - `kubeconfig.yaml` in `terraform/01-infrastructure/` has full cluster-admin
   access — treat it like a credential (it's already `.gitignore`d).
 - `terraform/01-infrastructure/terraform.tfstate` now holds your GitHub PAT

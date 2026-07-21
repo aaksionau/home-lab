@@ -1,0 +1,196 @@
+{
+  "id": null,
+  "uid": "weather-pipeline-overview",
+  "title": "Weather Pipeline Overview",
+  "tags": ["weather", "pipeline"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    { "id": 100, "type": "row", "title": "Pipeline Throughput", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 } },
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Message Throughput",
+      "description": "Readings published (Gateway), processed (Processor), and evaluated (Rules Engine) per second.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "spanNulls": true }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(weather_readings_published_total[5m]))",
+          "legendFormat": "Published (Gateway)",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(weather_readings_processed_total[5m]))",
+          "legendFormat": "Processed (Processor)",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(weather_readings_evaluated_total[5m]))",
+          "legendFormat": "Evaluated (Rules Engine)",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Alerts Triggered by Severity",
+      "description": "Rate of alerts published to weather.alerts, split by severity.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": { "drawStyle": "bars", "lineWidth": 1, "fillOpacity": 40, "stacking": { "mode": "normal" } }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum by (severity) (rate(weather_alerts_triggered_total[5m]))",
+          "legendFormat": "{{severity}}",
+          "refId": "A"
+        }
+      ]
+    },
+    { "id": 101, "type": "row", "title": "Latency", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 } },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Reading Processing Duration (p50 / p95 / p99)",
+      "description": "Time to enrich, persist, and republish a single reading in WeatherProcessor.Worker.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 5, "spanNulls": true }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.50, sum(rate(weather_reading_processing_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.95, sum(rate(weather_reading_processing_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.99, sum(rate(weather_reading_processing_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p99",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "HTTP Request Duration p95 by Service",
+      "description": "ASP.NET Core request duration (auto-instrumented) for Gateway API and Dashboard API.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 5, "spanNulls": true }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_request_duration_seconds_bucket[5m])) by (le, exported_job))",
+          "legendFormat": "{{exported_job}}",
+          "refId": "A"
+        }
+      ]
+    },
+    { "id": 102, "type": "row", "title": "Errors", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 19 } },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Failure Rates",
+      "description": "Publish, processing, and rule-evaluation failures across the pipeline.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 20 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 15, "spanNulls": true },
+          "color": { "mode": "palette-classic" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(weather_readings_publish_failures_total[5m]))",
+          "legendFormat": "Publish failures (Gateway)",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(weather_readings_processing_failures_total[5m]))",
+          "legendFormat": "Processing failures (Processor)",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(weather_rule_evaluation_failures_total[5m]))",
+          "legendFormat": "Evaluation failures (Rules Engine)",
+          "refId": "C"
+        }
+      ]
+    },
+    { "id": 103, "type": "row", "title": "Recent Logs", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 29 } },
+    {
+      "id": 6,
+      "type": "logs",
+      "title": "Recent Logs (All Services)",
+      "description": "Live tail across all four services. Filter by correlation id, e.g. |= \"<guid>\", to trace one reading's full path.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 30 },
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{exporter=\"OTLP\"}",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}
