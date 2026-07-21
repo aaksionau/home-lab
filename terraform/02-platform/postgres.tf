@@ -18,6 +18,12 @@ resource "kubernetes_secret_v1" "postgres" {
 }
 
 resource "kubernetes_persistent_volume_claim_v1" "postgres" {
+  # local-path (k3s's default StorageClass) uses WaitForFirstConsumer binding
+  # -- it won't bind until a pod that mounts it is scheduled. Without this,
+  # Terraform waits for Bound before creating the Deployment that would
+  # supply that pod, which deadlocks the two against each other.
+  wait_until_bound = false
+
   metadata {
     name      = "postgres-data"
     namespace = kubernetes_namespace_v1.weather.metadata[0].name

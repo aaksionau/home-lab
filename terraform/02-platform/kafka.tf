@@ -1,4 +1,6 @@
 resource "kubernetes_persistent_volume_claim_v1" "kafka" {
+  wait_until_bound = false
+
   metadata {
     name      = "kafka-data"
     namespace = kubernetes_namespace_v1.weather.metadata[0].name
