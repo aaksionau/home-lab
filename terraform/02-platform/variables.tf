@@ -9,11 +9,6 @@ variable "namespace" {
   default = "weather"
 }
 
-variable "registry_host" {
-  description = "host:port of the Docker registry the images were pushed to (matches 01-infrastructure's registry_host output)."
-  type        = string
-}
-
 variable "image_tag" {
   description = "Tag of the weather-station images to deploy (produced by scripts/build-and-push.sh)."
   type        = string

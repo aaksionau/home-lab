@@ -152,7 +152,7 @@ REGISTRY_HOST=$(cd ../terraform/01-infrastructure && terraform output -raw regis
 
 # 3. Deploy the services onto the cluster
 cd ../terraform/02-platform
-cp terraform.tfvars.example terraform.tfvars   # set registry_host + image_tag = "v1"
+cp terraform.tfvars.example terraform.tfvars   # set image_tag = "v1"
 terraform init
 terraform apply
 ```

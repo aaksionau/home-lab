@@ -1,6 +1,5 @@
 # Copy to terraform.tfvars and fill in.
-# registry_host should match the `registry_host` output from 01-infrastructure,
-# e.g. "192.168.1.50:5000".
+# registry_host is no longer set here — it's read automatically from
+# 01-infrastructure's state (see remote_state.tf).
 
-registry_host = "192.168.1.50:5000"
-image_tag     = "latest"
+image_tag = "latest"

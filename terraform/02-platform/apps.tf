@@ -1,12 +1,13 @@
 locals {
-  ns = kubernetes_namespace_v1.weather.metadata[0].name
+  ns            = kubernetes_namespace_v1.weather.metadata[0].name
+  registry_host = data.terraform_remote_state.infra.outputs.registry_host
 
   images = {
-    gateway_api      = "${var.registry_host}/weather/weather-gateway-api:${var.image_tag}"
-    processor_worker = "${var.registry_host}/weather/weather-processor-worker:${var.image_tag}"
-    rules_worker     = "${var.registry_host}/weather/weather-rules-worker:${var.image_tag}"
-    dashboard_api    = "${var.registry_host}/weather/dashboard-api:${var.image_tag}"
-    dashboard_web    = "${var.registry_host}/weather/dashboard-web:${var.image_tag}"
+    gateway_api      = "${local.registry_host}/weather/weather-gateway-api:${var.image_tag}"
+    processor_worker = "${local.registry_host}/weather/weather-processor-worker:${var.image_tag}"
+    rules_worker     = "${local.registry_host}/weather/weather-rules-worker:${var.image_tag}"
+    dashboard_api    = "${local.registry_host}/weather/dashboard-api:${var.image_tag}"
+    dashboard_web    = "${local.registry_host}/weather/dashboard-web:${var.image_tag}"
   }
 
   azurite_connection_string = "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;"
