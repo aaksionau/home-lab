@@ -8,7 +8,7 @@ Ubuntu host) running a 2-node k3s cluster for the
 
 ```
 Ubuntu host (KVM/libvirt)
-├── weather-registry          plain Docker registry, host:5000, holds the 5 app images
+├── weather-registry          plain Docker registry, host:5000, holds the 6 app images
 ├── weather-ci-runner          self-hosted GitHub Actions runner — builds + pushes only, never deploys
 ├── VM: control-plane          2 vCPU / 4GB — k3s server, tainted (no workloads)
 └── VM: worker                 4 vCPU / 24GB — k3s agent, runs everything below
@@ -19,9 +19,10 @@ Ubuntu host (KVM/libvirt)
             ├── weather-gateway-api      (NodePort 30135 — ESP32 posts here)
             ├── weather-processor-worker
             ├── weather-rules-worker
+            ├── weather-notifications-worker   (no ports — consumes weather.alerts, sends SMS)
             ├── dashboard-api  (ClusterIP only, proxied by dashboard-web)
             ├── dashboard-web  (NodePort 30190 — browser dashboard)
-            ├── otel-collector (ClusterIP — OTLP receiver for all 4 .NET services)
+            ├── otel-collector (ClusterIP — OTLP receiver for all 5 .NET services)
             ├── prometheus     (ClusterIP — scrapes otel-collector)
             ├── loki           (ClusterIP — logs, via otel-collector)
             └── grafana        (NodePort 30300 — dashboards + log explore)
@@ -144,7 +145,7 @@ terraform init
 terraform apply
 # outputs: control_plane_ip, worker_ip, registry_host, kubeconfig_path
 
-# 2. Build and push the 5 service images to the registry it just created
+# 2. Build and push the 6 service images to the registry it just created
 cd ../../scripts
 REGISTRY_HOST=$(cd ../terraform/01-infrastructure && terraform output -raw registry_host) \
   WEATHER_REPO=/path/to/weather-home-station \
@@ -152,7 +153,7 @@ REGISTRY_HOST=$(cd ../terraform/01-infrastructure && terraform output -raw regis
 
 # 3. Deploy the services onto the cluster
 cd ../terraform/02-platform
-cp terraform.tfvars.example terraform.tfvars   # set image_tag = "v1"
+cp terraform.tfvars.example terraform.tfvars   # set image_tag = "v1" and sms_smtp_*/sms_recipient_numbers
 terraform init
 terraform apply
 ```
@@ -167,7 +168,7 @@ Then:
 Pushing to `main` on `weather-home-station` triggers
 [`.github/workflows/build-and-push.yml`](../weather-home-station/.github/workflows/build-and-push.yml)
 on the self-hosted runner (`weather-ci-runner`, provisioned by
-`ci-runner.tf`): it builds all 5 images, tags them with the commit SHA, and
+`ci-runner.tf`): it builds all 6 images, tags them with the commit SHA, and
 pushes them to the registry. **It stops there — deploying is always a
 manual step**, so a bad build never touches the running cluster on its own.
 
@@ -218,3 +219,7 @@ box but worth knowing.
 - `terraform/01-infrastructure/terraform.tfstate` now holds your GitHub PAT
   in plaintext (Terraform state isn't encrypted at rest) — it's already
   `.gitignore`d, but don't hand that file to anyone.
+- Same goes for `terraform/02-platform/terraform.tfstate`: it holds your
+  Gmail app password and recipient phone numbers in plaintext (they also
+  land in the `sms-credentials` Kubernetes Secret, base64-encoded, not
+  encrypted) — already `.gitignore`d, same caution applies.

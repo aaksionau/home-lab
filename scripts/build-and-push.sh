@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds the 5 weather-station service images and pushes them to the
+# Builds the 6 weather-station service images and pushes them to the
 # insecure registry provisioned by terraform/01-infrastructure (registry.tf),
 # running on the Ubuntu server at ${REGISTRY_HOST}.
 #
@@ -21,6 +21,7 @@ declare -A SERVICES=(
   [weather-gateway-api]="src/WeatherGateway.API"
   [weather-processor-worker]="src/WeatherProcessor.Worker"
   [weather-rules-worker]="src/WeatherRules.Worker"
+  [weather-notifications-worker]="src/WeatherNotifications.Worker"
   [dashboard-api]="src/Dashboard.API"
   [dashboard-web]="src/Dashboard.Web"
 )

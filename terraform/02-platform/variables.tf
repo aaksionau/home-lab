@@ -38,3 +38,21 @@ variable "grafana_node_port" {
   type        = number
   default     = 30300
 }
+
+variable "sms_smtp_username" {
+  description = "Gmail address used to relay SMS alerts through Google Fi's email-to-SMS gateway. Requires a Gmail app password (myaccount.google.com/apppasswords), not the account's login password. Set this in terraform.tfvars, never commit it."
+  type        = string
+  sensitive   = true
+}
+
+variable "sms_smtp_password" {
+  description = "Gmail app password for sms_smtp_username. Set this in terraform.tfvars, never commit it."
+  type        = string
+  sensitive   = true
+}
+
+variable "sms_recipient_numbers" {
+  description = "10-digit Google Fi number(s) to receive SMS alerts, delivered via <number>@msg.fi.google.com."
+  type        = list(string)
+  sensitive   = true
+}

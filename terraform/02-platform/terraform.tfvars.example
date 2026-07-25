@@ -3,3 +3,10 @@
 # 01-infrastructure's state (see remote_state.tf).
 
 image_tag = "latest"
+
+# SMS alerts via Google Fi's email-to-SMS gateway. sms_smtp_username must be
+# a Gmail address; sms_smtp_password must be a Gmail app password
+# (myaccount.google.com/apppasswords), not the account's login password.
+sms_smtp_username     = "yourname@gmail.com"
+sms_smtp_password     = "your-gmail-app-password"
+sms_recipient_numbers = ["5551234567"]

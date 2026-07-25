@@ -3,11 +3,12 @@ locals {
   registry_host = data.terraform_remote_state.infra.outputs.registry_host
 
   images = {
-    gateway_api      = "${local.registry_host}/weather/weather-gateway-api:${var.image_tag}"
-    processor_worker = "${local.registry_host}/weather/weather-processor-worker:${var.image_tag}"
-    rules_worker     = "${local.registry_host}/weather/weather-rules-worker:${var.image_tag}"
-    dashboard_api    = "${local.registry_host}/weather/dashboard-api:${var.image_tag}"
-    dashboard_web    = "${local.registry_host}/weather/dashboard-web:${var.image_tag}"
+    gateway_api          = "${local.registry_host}/weather/weather-gateway-api:${var.image_tag}"
+    processor_worker     = "${local.registry_host}/weather/weather-processor-worker:${var.image_tag}"
+    rules_worker         = "${local.registry_host}/weather/weather-rules-worker:${var.image_tag}"
+    notifications_worker = "${local.registry_host}/weather/weather-notifications-worker:${var.image_tag}"
+    dashboard_api        = "${local.registry_host}/weather/dashboard-api:${var.image_tag}"
+    dashboard_web        = "${local.registry_host}/weather/dashboard-web:${var.image_tag}"
   }
 
   azurite_connection_string = "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;"
@@ -258,6 +259,110 @@ resource "kubernetes_deployment_v1" "rules_worker" {
             limits = {
               cpu    = "500m"
               memory = "384Mi"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+# --- WeatherNotifications.Worker (consumes weather.alerts, sends SMS via
+#     Google Fi's email-to-SMS gateway; no database, no further publish) ---
+
+resource "kubernetes_deployment_v1" "notifications_worker" {
+  metadata {
+    name      = "weather-notifications-worker"
+    namespace = local.ns
+    labels    = { app = "weather-notifications-worker" }
+  }
+
+  spec {
+    replicas = 1
+    selector { match_labels = { app = "weather-notifications-worker" } }
+
+    template {
+      metadata { labels = { app = "weather-notifications-worker" } }
+
+      spec {
+        container {
+          name  = "weather-notifications-worker"
+          image = local.images.notifications_worker
+
+          env {
+            name  = "Kafka__BootstrapServers"
+            value = "kafka:29092"
+          }
+          env {
+            name  = "Kafka__AlertsTopic"
+            value = "weather.alerts"
+          }
+          env {
+            name  = "Kafka__ConsumerGroupId"
+            value = "weather-notifications"
+          }
+          env {
+            name  = "Sms__Enabled"
+            value = "true"
+          }
+          env {
+            name  = "Sms__SmtpHost"
+            value = "smtp.gmail.com"
+          }
+          env {
+            name  = "Sms__SmtpPort"
+            value = "587"
+          }
+          env {
+            name = "Sms__SmtpUsername"
+            value_from {
+              secret_key_ref {
+                name = kubernetes_secret_v1.sms.metadata[0].name
+                key  = "SMTP_USERNAME"
+              }
+            }
+          }
+          env {
+            name = "Sms__SmtpPassword"
+            value_from {
+              secret_key_ref {
+                name = kubernetes_secret_v1.sms.metadata[0].name
+                key  = "SMTP_PASSWORD"
+              }
+            }
+          }
+          env {
+            name  = "Sms__GatewayDomain"
+            value = "msg.fi.google.com"
+          }
+          dynamic "env" {
+            for_each = var.sms_recipient_numbers
+            content {
+              name  = "Sms__RecipientNumbers__${env.key}"
+              value = env.value
+            }
+          }
+          env {
+            name  = "OTEL_SERVICE_NAME"
+            value = "weather-notifications-worker"
+          }
+          env {
+            name  = "OTEL_EXPORTER_OTLP_ENDPOINT"
+            value = "http://otel-collector:4317"
+          }
+          env {
+            name  = "OTEL_METRIC_EXPORT_INTERVAL"
+            value = "15000"
+          }
+
+          resources {
+            requests = {
+              cpu    = "50m"
+              memory = "64Mi"
+            }
+            limits = {
+              cpu    = "300m"
+              memory = "256Mi"
             }
           }
         }
