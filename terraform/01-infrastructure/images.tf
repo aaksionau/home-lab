@@ -1,6 +1,7 @@
 resource "libvirt_pool" "vms" {
-  name = "weather-k3s"
-  type = "dir"
+  name      = "weather-k3s"
+  type      = "dir"
+  autostart = true
 
   target {
     path = "/var/lib/libvirt/images/weather-k3s"

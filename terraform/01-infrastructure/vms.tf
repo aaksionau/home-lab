@@ -59,9 +59,10 @@ resource "libvirt_cloudinit_disk" "worker" {
 }
 
 resource "libvirt_domain" "control_plane" {
-  name   = "weather-k3s-control-plane"
-  memory = var.control_plane_memory_mb
-  vcpu   = var.control_plane_vcpu
+  name      = "weather-k3s-control-plane"
+  memory    = var.control_plane_memory_mb
+  vcpu      = var.control_plane_vcpu
+  autostart = true
 
   cloudinit = libvirt_cloudinit_disk.control_plane.id
 
@@ -89,9 +90,10 @@ resource "libvirt_domain" "control_plane" {
 }
 
 resource "libvirt_domain" "worker" {
-  name   = "weather-k3s-worker"
-  memory = var.worker_memory_mb
-  vcpu   = var.worker_vcpu
+  name      = "weather-k3s-worker"
+  memory    = var.worker_memory_mb
+  vcpu      = var.worker_vcpu
+  autostart = true
 
   cloudinit = libvirt_cloudinit_disk.worker.id
 
