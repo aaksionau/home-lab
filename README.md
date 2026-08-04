@@ -214,26 +214,25 @@ box but worth knowing.
 There's no CI runner for `stocks-research` yet, so upgrades are manual.
 `scripts/upgrade-stocks.sh` does the whole flow in one command: builds +
 pushes `stocks-pipeline`/`stocks-web` (tagged with the repo's current short
-git SHA by default), then SSHes into the server and runs `terraform apply`
-in `terraform/03-stocks-platform` with those tags — because that stack
-(like `02-platform`) reads `01-infrastructure`'s state via a local relative
-path, `terraform apply` has to run on the server itself, not from your dev
-machine.
+git SHA by default), then runs `terraform apply` in
+`terraform/03-stocks-platform` with those tags. **Run it on the server
+itself** — `terraform/03-stocks-platform` (like `02-platform`) reads
+`01-infrastructure`'s state via a local relative path, so `terraform apply`
+only works from the same host `01-infrastructure` was applied from.
 
 ```bash
-export SERVER_SSH=youruser@192.168.1.50          # the Ubuntu server
-export REMOTE_HOME_SERVER_PATH=~/home-server      # this repo's checkout path on that server
-cd scripts
+cd ~/home-server/scripts
 ./upgrade-stocks.sh          # tag defaults to `git -C $STOCKS_REPO rev-parse --short HEAD`
 ./upgrade-stocks.sh v3       # or pass an explicit tag
 ./upgrade-stocks.sh -y       # skip terraform's interactive apply confirmation
 ```
 
 `STOCKS_REPO` defaults to the sibling `../stocks-research` checkout next to
-this repo; set it explicitly if yours lives elsewhere. `terraform apply`
-still runs over SSH with a TTY (`-t`), so you get the normal plan output
-and confirmation prompt (unless `-y`) before anything changes on the
-cluster.
+this repo on the server; set it explicitly if yours lives elsewhere. Note
+that re-running against the same commit produces the same tag, which won't
+trigger a rollout (the k8s resources default to `imagePullPolicy:
+IfNotPresent`) — commit your changes first, or pass an explicit tag, to
+force a fresh deploy.
 
 ## Notes / things you'll likely want to change later
 
