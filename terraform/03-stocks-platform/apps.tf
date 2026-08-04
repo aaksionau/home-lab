@@ -3,8 +3,9 @@ locals {
   registry_host = data.terraform_remote_state.infra.outputs.registry_host
 
   images = {
-    pipeline = "${local.registry_host}/stocks/stocks-pipeline:${var.pipeline_image_tag}"
-    web      = "${local.registry_host}/stocks/stocks-web:${var.web_image_tag}"
+    pipeline      = "${local.registry_host}/stocks/stocks-pipeline:${var.pipeline_image_tag}"
+    web           = "${local.registry_host}/stocks/stocks-web:${var.web_image_tag}"
+    news_pipeline = "${local.registry_host}/stocks/stocks-news-pipeline:${var.news_pipeline_image_tag}"
   }
 }
 
@@ -101,6 +102,119 @@ resource "kubernetes_cron_job_v1" "pipeline" {
                 limits = {
                   cpu    = "1"
                   memory = "1Gi"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+# --- stocks-news-pipeline (batch job: fetch -> score -> persist) ---
+
+resource "kubernetes_cron_job_v1" "news_pipeline" {
+  metadata {
+    name      = "stocks-news-pipeline"
+    namespace = local.ns
+  }
+
+  spec {
+    schedule = var.news_pipeline_schedule
+    timezone = "Etc/UTC"
+
+    # A run should never overlap the next one -- it re-queries unscored
+    # articles from the last run rather than assuming a clean slate.
+    concurrency_policy = "Forbid"
+
+    successful_jobs_history_limit = 3
+    failed_jobs_history_limit     = 3
+
+    job_template {
+      metadata {}
+
+      spec {
+        # Same rationale as stocks-pipeline: one retry is enough to ride out
+        # a one-off Finnhub/Foundry blip; a systemic failure aborts the run
+        # itself (see news/pipeline.py).
+        backoff_limit = 1
+
+        template {
+          metadata {
+            labels = { app = "stocks-news-pipeline" }
+          }
+
+          spec {
+            restart_policy = "Never"
+
+            container {
+              name  = "stocks-news-pipeline"
+              image = local.images.news_pipeline
+
+              env {
+                name = "DATABASE_URL"
+                value_from {
+                  secret_key_ref {
+                    name = kubernetes_secret_v1.postgres.metadata[0].name
+                    key  = "DATABASE_URL"
+                  }
+                }
+              }
+              env {
+                name = "FINNHUB_API_KEY"
+                value_from {
+                  secret_key_ref {
+                    name = kubernetes_secret_v1.finnhub.metadata[0].name
+                    key  = "FINNHUB_API_KEY"
+                  }
+                }
+              }
+              env {
+                name = "FOUNDRY_ENDPOINT"
+                value_from {
+                  secret_key_ref {
+                    name = kubernetes_secret_v1.foundry.metadata[0].name
+                    key  = "FOUNDRY_ENDPOINT"
+                  }
+                }
+              }
+              env {
+                name = "FOUNDRY_API_KEY"
+                value_from {
+                  secret_key_ref {
+                    name = kubernetes_secret_v1.foundry.metadata[0].name
+                    key  = "FOUNDRY_API_KEY"
+                  }
+                }
+              }
+              env {
+                name = "FOUNDRY_DEPLOYMENT"
+                value_from {
+                  secret_key_ref {
+                    name = kubernetes_secret_v1.foundry.metadata[0].name
+                    key  = "FOUNDRY_DEPLOYMENT"
+                  }
+                }
+              }
+              env {
+                name = "FOUNDRY_API_VERSION"
+                value_from {
+                  secret_key_ref {
+                    name = kubernetes_secret_v1.foundry.metadata[0].name
+                    key  = "FOUNDRY_API_VERSION"
+                  }
+                }
+              }
+
+              resources {
+                requests = {
+                  cpu    = "100m"
+                  memory = "128Mi"
+                }
+                limits = {
+                  cpu    = "500m"
+                  memory = "512Mi"
                 }
               }
             }

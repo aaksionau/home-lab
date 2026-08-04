@@ -28,14 +28,15 @@ Ubuntu host (KVM/libvirt)
         │   ├── loki           (ClusterIP — logs, via otel-collector)
         │   └── grafana        (NodePort 30300 — dashboards + log explore)
         └── namespace: stocks
-            ├── postgres       (dedicated instance, not shared with weather)
-            ├── stocks-pipeline    (CronJob, once daily — no ports)
-            └── stocks-web         (NodePort 30200 — Streamlit dashboard)
+            ├── postgres              (dedicated instance, not shared with weather)
+            ├── stocks-pipeline       (CronJob, once daily — no ports)
+            ├── stocks-news-pipeline  (CronJob, every 4 hours — no ports)
+            └── stocks-web            (NodePort 30200 — Streamlit dashboard)
 ```
 
 The `stocks` namespace has no OTEL/Prometheus/Loki/Grafana wiring by design
--- `kubectl logs`/Job status is sufficient to diagnose a once-daily batch
-job. See `terraform/03-stocks-platform`.
+-- `kubectl logs`/Job status is sufficient to diagnose these batch jobs.
+See `terraform/03-stocks-platform`.
 
 Both VMs attach to a real Linux bridge (`br0`) on the host, not macvtap.
 Macvtap was the original design (avoids touching host networking at all),
@@ -213,8 +214,8 @@ box but worth knowing.
 
 There's no CI runner for `stocks-research` yet, so upgrades are manual.
 `scripts/upgrade-stocks.sh` does the whole flow in one command: builds +
-pushes `stocks-pipeline`/`stocks-web` (tagged with the repo's current short
-git SHA by default), then runs `terraform apply` in
+pushes `stocks-pipeline`/`stocks-news-pipeline`/`stocks-web` (tagged with the
+repo's current short git SHA by default), then runs `terraform apply` in
 `terraform/03-stocks-platform` with those tags. **Run it on the server
 itself** — `terraform/03-stocks-platform` (like `02-platform`) reads
 `01-infrastructure`'s state via a local relative path, so `terraform apply`
@@ -233,6 +234,11 @@ that re-running against the same commit produces the same tag, which won't
 trigger a rollout (the k8s resources default to `imagePullPolicy:
 IfNotPresent`) — commit your changes first, or pass an explicit tag, to
 force a fresh deploy.
+
+The first time you deploy the news pipeline, set `finnhub_api_key` in
+`terraform/03-stocks-platform/terraform.tfvars` (get a free key from
+[finnhub.io](https://finnhub.io)) — `terraform apply` fails without it since
+the variable has no default.
 
 ## Notes / things you'll likely want to change later
 

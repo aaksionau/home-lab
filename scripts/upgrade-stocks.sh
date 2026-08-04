@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # One-shot upgrade for the stocks-research containers: builds + pushes new
-# images, then applies terraform/03-stocks-platform with the new tag(s).
+# images (pipeline, news-pipeline, web), then applies terraform/03-stocks-platform
+# with the new tag(s).
 #
 # Meant to be run directly on the Ubuntu server (terraform/03-stocks-platform
 # reads 01-infrastructure's state via a local relative path, so terraform
@@ -39,12 +40,12 @@ echo "==> Reading registry_host from 01-infrastructure state"
 REGISTRY_HOST="$(terraform -chdir="${HOME_SERVER_DIR}/terraform/01-infrastructure" output -raw registry_host)"
 echo "    registry_host=${REGISTRY_HOST}"
 
-echo "==> Building and pushing stocks-pipeline / stocks-web at tag ${TAG}"
+echo "==> Building and pushing stocks-pipeline / stocks-news-pipeline / stocks-web at tag ${TAG}"
 REGISTRY_HOST="${REGISTRY_HOST}" STOCKS_REPO="${STOCKS_REPO}" \
   "${SCRIPT_DIR}/build-and-push-stocks.sh" "${TAG}"
 
-echo "==> Applying terraform/03-stocks-platform with pipeline_image_tag=web_image_tag=${TAG}"
+echo "==> Applying terraform/03-stocks-platform with pipeline_image_tag=news_pipeline_image_tag=web_image_tag=${TAG}"
 terraform -chdir="${HOME_SERVER_DIR}/terraform/03-stocks-platform" apply \
-  -var="pipeline_image_tag=${TAG}" -var="web_image_tag=${TAG}" ${AUTO_APPROVE}
+  -var="pipeline_image_tag=${TAG}" -var="news_pipeline_image_tag=${TAG}" -var="web_image_tag=${TAG}" ${AUTO_APPROVE}
 
-echo "Done. stocks-pipeline and stocks-web are now on tag ${TAG}."
+echo "Done. stocks-pipeline, stocks-news-pipeline, and stocks-web are now on tag ${TAG}."

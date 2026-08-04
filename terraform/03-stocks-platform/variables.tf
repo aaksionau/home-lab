@@ -27,6 +27,12 @@ variable "web_image_tag" {
   default     = "latest"
 }
 
+variable "news_pipeline_image_tag" {
+  description = "Tag of the stocks-news-pipeline image to deploy (produced by scripts/build-and-push-stocks.sh)."
+  type        = string
+  default     = "latest"
+}
+
 variable "web_node_port" {
   description = "NodePort the Streamlit web UI is exposed on."
   type        = number
@@ -37,6 +43,18 @@ variable "pipeline_schedule" {
   description = "Cron schedule (in the cluster's local time, which is UTC) for the daily pipeline CronJob. Default is 22:00 UTC on weekdays -- after US market close, before the AI Foundry commentary calls are needed the next morning."
   type        = string
   default     = "0 22 * * 1-5"
+}
+
+variable "news_pipeline_schedule" {
+  description = "Cron schedule (in the cluster's local time, which is UTC) for the news pipeline CronJob. News moves faster than end-of-day prices, so this runs more often than pipeline_schedule -- every 4 hours by default."
+  type        = string
+  default     = "0 */4 * * *"
+}
+
+variable "finnhub_api_key" {
+  description = "Finnhub API key for news fetching (https://finnhub.io). Set this in terraform.tfvars, never commit it."
+  type        = string
+  sensitive   = true
 }
 
 variable "foundry_endpoint" {

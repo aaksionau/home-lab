@@ -2,10 +2,15 @@
 # registry_host is not set here -- it's read automatically from
 # 01-infrastructure's state (see remote_state.tf).
 
-pipeline_image_tag = "latest"
-web_image_tag      = "latest"
+pipeline_image_tag      = "latest"
+news_pipeline_image_tag = "latest"
+web_image_tag           = "latest"
 
 # Azure AI Foundry project + gpt-4o-mini deployment used for flagged-ticker
-# commentary. Must be provisioned before the pipeline can call it.
+# commentary and news sentiment scoring. Must be provisioned before either
+# pipeline can call it.
 foundry_endpoint = "https://<your-foundry-resource>.openai.azure.com"
 foundry_api_key  = "your-foundry-api-key"
+
+# Finnhub API key for the news pipeline's company-news fetch (https://finnhub.io).
+finnhub_api_key = "your-finnhub-api-key"

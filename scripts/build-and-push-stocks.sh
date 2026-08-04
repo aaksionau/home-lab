@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds the 2 stocks-research images (pipeline + web) and pushes them to
+# Builds the 3 stocks-research images (pipeline + news-pipeline + web) and pushes them to
 # the insecure registry provisioned by terraform/01-infrastructure
 # (registry.tf), running on the Ubuntu server at ${REGISTRY_HOST}.
 #
@@ -19,6 +19,7 @@ TAG="${1:-latest}"
 
 declare -A SERVICES=(
   [stocks-pipeline]="docker/pipeline.Dockerfile"
+  [stocks-news-pipeline]="docker/news-pipeline.Dockerfile"
   [stocks-web]="docker/web.Dockerfile"
 )
 
@@ -33,4 +34,4 @@ for name in "${!SERVICES[@]}"; do
   docker push "${image}"
 done
 
-echo "Done. Set pipeline_image_tag/web_image_tag = \"${TAG}\" in terraform/03-stocks-platform/terraform.tfvars and re-apply."
+echo "Done. Set pipeline_image_tag/news_pipeline_image_tag/web_image_tag = \"${TAG}\" in terraform/03-stocks-platform/terraform.tfvars and re-apply."
