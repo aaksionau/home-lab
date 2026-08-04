@@ -18,8 +18,8 @@ STOCKS_REPO="${STOCKS_REPO:?set STOCKS_REPO to the stocks-research checkout path
 TAG="${1:-latest}"
 
 declare -A SERVICES=(
-  [stocks-pipeline]="Dockerfile.pipeline"
-  [stocks-web]="Dockerfile.web"
+  [stocks-pipeline]="docker/pipeline.Dockerfile"
+  [stocks-web]="docker/web.Dockerfile"
 )
 
 for name in "${!SERVICES[@]}"; do
