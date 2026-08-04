@@ -64,6 +64,15 @@ resource "libvirt_domain" "control_plane" {
   vcpu      = var.control_plane_vcpu
   autostart = true
 
+  # Without this, QEMU falls back to a conservative default CPU model that
+  # doesn't expose SSE4.2/POPCNT/etc. to the guest -- fine for the .NET
+  # services, but breaks anything (e.g. NumPy/pandas wheels, which are
+  # built expecting the x86-64-v2 baseline) that checks CPU features at
+  # runtime. host-passthrough exposes the real host CPU (i5-8500T).
+  cpu {
+    mode = "host-passthrough"
+  }
+
   cloudinit = libvirt_cloudinit_disk.control_plane.id
 
   network_interface {
@@ -94,6 +103,13 @@ resource "libvirt_domain" "worker" {
   memory    = var.worker_memory_mb
   vcpu      = var.worker_vcpu
   autostart = true
+
+  # See the same cpu block on libvirt_domain.control_plane for why --
+  # this is the VM that actually runs stocks-web/stocks-pipeline, so
+  # it's the one that was hitting the NumPy X86_V2 failure.
+  cpu {
+    mode = "host-passthrough"
+  }
 
   cloudinit = libvirt_cloudinit_disk.worker.id
 
