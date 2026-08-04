@@ -2,31 +2,40 @@
 
 Terraform for the Dell OptiPlex 7060 Micro (i5-8500T, 32GB RAM, 512GB NVMe,
 Ubuntu host) running a 2-node k3s cluster for the
-[weather-home-station](../weather-home-station) services.
+[weather-home-station](../weather-home-station) and
+[stocks-research](../stocks-research) apps.
 
 ## Architecture
 
 ```
 Ubuntu host (KVM/libvirt)
-├── weather-registry          plain Docker registry, host:5000, holds the 6 app images
+├── weather-registry          plain Docker registry, host:5000, holds the app images
 ├── weather-ci-runner          self-hosted GitHub Actions runner — builds + pushes only, never deploys
 ├── VM: control-plane          2 vCPU / 4GB — k3s server, tainted (no workloads)
 └── VM: worker                 4 vCPU / 24GB — k3s agent, runs everything below
-        └── namespace: weather
-            ├── kafka          (single-node KRaft, as in docker-compose)
-            ├── postgres
-            ├── azurite
-            ├── weather-gateway-api      (NodePort 30135 — ESP32 posts here)
-            ├── weather-processor-worker
-            ├── weather-rules-worker
-            ├── weather-notifications-worker   (no ports — consumes weather.alerts, sends SMS)
-            ├── dashboard-api  (ClusterIP only, proxied by dashboard-web)
-            ├── dashboard-web  (NodePort 30190 — browser dashboard)
-            ├── otel-collector (ClusterIP — OTLP receiver for all 5 .NET services)
-            ├── prometheus     (ClusterIP — scrapes otel-collector)
-            ├── loki           (ClusterIP — logs, via otel-collector)
-            └── grafana        (NodePort 30300 — dashboards + log explore)
+        ├── namespace: weather
+        │   ├── kafka          (single-node KRaft, as in docker-compose)
+        │   ├── postgres
+        │   ├── azurite
+        │   ├── weather-gateway-api      (NodePort 30135 — ESP32 posts here)
+        │   ├── weather-processor-worker
+        │   ├── weather-rules-worker
+        │   ├── weather-notifications-worker   (no ports — consumes weather.alerts, sends SMS)
+        │   ├── dashboard-api  (ClusterIP only, proxied by dashboard-web)
+        │   ├── dashboard-web  (NodePort 30190 — browser dashboard)
+        │   ├── otel-collector (ClusterIP — OTLP receiver for all 5 .NET services)
+        │   ├── prometheus     (ClusterIP — scrapes otel-collector)
+        │   ├── loki           (ClusterIP — logs, via otel-collector)
+        │   └── grafana        (NodePort 30300 — dashboards + log explore)
+        └── namespace: stocks
+            ├── postgres       (dedicated instance, not shared with weather)
+            ├── stocks-pipeline    (CronJob, once daily — no ports)
+            └── stocks-web         (NodePort 30200 — Streamlit dashboard)
 ```
+
+The `stocks` namespace has no OTEL/Prometheus/Loki/Grafana wiring by design
+-- `kubectl logs`/Job status is sufficient to diagnose a once-daily batch
+job. See `terraform/03-stocks-platform`.
 
 Both VMs attach to a real Linux bridge (`br0`) on the host, not macvtap.
 Macvtap was the original design (avoids touching host networking at all),
