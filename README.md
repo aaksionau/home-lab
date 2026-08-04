@@ -29,9 +29,10 @@ Ubuntu host (KVM/libvirt)
         │   └── grafana        (NodePort 30300 — dashboards + log explore)
         └── namespace: stocks
             ├── postgres              (dedicated instance, not shared with weather)
-            ├── stocks-pipeline       (CronJob, once daily — no ports)
-            ├── stocks-news-pipeline  (CronJob, every 4 hours — no ports)
-            └── stocks-web            (NodePort 30200 — Streamlit dashboard)
+            ├── stocks-pipeline         (CronJob, once daily — no ports)
+            ├── stocks-news-pipeline    (CronJob, every 4 hours — no ports)
+            ├── stocks-company-pipeline (CronJob, weekly — no ports)
+            └── stocks-web              (NodePort 30200 — Streamlit dashboard)
 ```
 
 The `stocks` namespace has no OTEL/Prometheus/Loki/Grafana wiring by design
@@ -214,8 +215,8 @@ box but worth knowing.
 
 There's no CI runner for `stocks-research` yet, so upgrades are manual.
 `scripts/upgrade-stocks.sh` does the whole flow in one command: builds +
-pushes `stocks-pipeline`/`stocks-news-pipeline`/`stocks-web` (tagged with the
-repo's current short git SHA by default), then runs `terraform apply` in
+pushes `stocks-pipeline`/`stocks-news-pipeline`/`stocks-company-pipeline`/`stocks-web`
+(tagged with the repo's current short git SHA by default), then runs `terraform apply` in
 `terraform/03-stocks-platform` with those tags. **Run it on the server
 itself** — `terraform/03-stocks-platform` (like `02-platform`) reads
 `01-infrastructure`'s state via a local relative path, so `terraform apply`

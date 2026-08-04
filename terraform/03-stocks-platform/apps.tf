@@ -3,9 +3,10 @@ locals {
   registry_host = data.terraform_remote_state.infra.outputs.registry_host
 
   images = {
-    pipeline      = "${local.registry_host}/stocks/stocks-pipeline:${var.pipeline_image_tag}"
-    web           = "${local.registry_host}/stocks/stocks-web:${var.web_image_tag}"
-    news_pipeline = "${local.registry_host}/stocks/stocks-news-pipeline:${var.news_pipeline_image_tag}"
+    pipeline         = "${local.registry_host}/stocks/stocks-pipeline:${var.pipeline_image_tag}"
+    web              = "${local.registry_host}/stocks/stocks-web:${var.web_image_tag}"
+    news_pipeline    = "${local.registry_host}/stocks/stocks-news-pipeline:${var.news_pipeline_image_tag}"
+    company_pipeline = "${local.registry_host}/stocks/stocks-company-pipeline:${var.company_pipeline_image_tag}"
   }
 }
 
@@ -203,6 +204,73 @@ resource "kubernetes_cron_job_v1" "news_pipeline" {
                   secret_key_ref {
                     name = kubernetes_secret_v1.foundry.metadata[0].name
                     key  = "FOUNDRY_API_VERSION"
+                  }
+                }
+              }
+
+              resources {
+                requests = {
+                  cpu    = "100m"
+                  memory = "128Mi"
+                }
+                limits = {
+                  cpu    = "500m"
+                  memory = "512Mi"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+# --- stocks-company-pipeline (batch job: fetch -> persist company profiles) ---
+
+resource "kubernetes_cron_job_v1" "company_pipeline" {
+  metadata {
+    name      = "stocks-company-pipeline"
+    namespace = local.ns
+  }
+
+  spec {
+    schedule = var.company_pipeline_schedule
+    timezone = "Etc/UTC"
+
+    # A run should never overlap the next one -- same reasoning as the other pipelines.
+    concurrency_policy = "Forbid"
+
+    successful_jobs_history_limit = 3
+    failed_jobs_history_limit     = 3
+
+    job_template {
+      metadata {}
+
+      spec {
+        # Don't hammer yfinance on transient failures; a systemic failure
+        # aborts the run itself (see company/pipeline.py), so one retry is
+        # enough to ride out a one-off blip.
+        backoff_limit = 1
+
+        template {
+          metadata {
+            labels = { app = "stocks-company-pipeline" }
+          }
+
+          spec {
+            restart_policy = "Never"
+
+            container {
+              name  = "stocks-company-pipeline"
+              image = local.images.company_pipeline
+
+              env {
+                name = "DATABASE_URL"
+                value_from {
+                  secret_key_ref {
+                    name = kubernetes_secret_v1.postgres.metadata[0].name
+                    key  = "DATABASE_URL"
                   }
                 }
               }

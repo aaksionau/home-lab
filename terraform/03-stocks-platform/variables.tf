@@ -33,6 +33,12 @@ variable "news_pipeline_image_tag" {
   default     = "latest"
 }
 
+variable "company_pipeline_image_tag" {
+  description = "Tag of the stocks-company-pipeline image to deploy (produced by scripts/build-and-push-stocks.sh)."
+  type        = string
+  default     = "latest"
+}
+
 variable "web_node_port" {
   description = "NodePort the Streamlit web UI is exposed on."
   type        = number
@@ -49,6 +55,12 @@ variable "news_pipeline_schedule" {
   description = "Cron schedule (in the cluster's local time, which is UTC) for the news pipeline CronJob. News moves faster than end-of-day prices, so this runs more often than pipeline_schedule -- every 4 hours by default."
   type        = string
   default     = "0 */4 * * *"
+}
+
+variable "company_pipeline_schedule" {
+  description = "Cron schedule (in the cluster's local time, which is UTC) for the company profile CronJob. Company profile data (sector, industry, description) changes rarely, so this runs on a much looser cadence than the other pipelines -- weekly by default."
+  type        = string
+  default     = "0 6 * * 0"
 }
 
 variable "finnhub_api_key" {

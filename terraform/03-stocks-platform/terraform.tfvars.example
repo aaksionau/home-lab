@@ -2,9 +2,10 @@
 # registry_host is not set here -- it's read automatically from
 # 01-infrastructure's state (see remote_state.tf).
 
-pipeline_image_tag      = "latest"
-news_pipeline_image_tag = "latest"
-web_image_tag           = "latest"
+pipeline_image_tag         = "latest"
+news_pipeline_image_tag    = "latest"
+company_pipeline_image_tag = "latest"
+web_image_tag              = "latest"
 
 # Azure AI Foundry project + gpt-4o-mini deployment used for flagged-ticker
 # commentary and news sentiment scoring. Must be provisioned before either
