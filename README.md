@@ -241,6 +241,29 @@ The first time you deploy the news pipeline, set `finnhub_api_key` in
 [finnhub.io](https://finnhub.io)) — `terraform apply` fails without it since
 the variable has no default.
 
+## Disk maintenance
+
+Every CI build and `upgrade-stocks.sh` run pushes a freshly-tagged image to
+the registry, and neither Docker nor containerd ever garbage-collects old
+tags on their own -- left unattended this fills disks (has happened once
+already: host hit 94%, worker's containerd store grew to 25G).
+
+- **Host** (`weather-registry`'s Docker images): run `scripts/setup-image-pruning.sh`
+  once to install a weekly systemd timer (`docker-image-prune.timer`,
+  Sundays 03:00) that runs `docker image prune -a -f`. Safe -- only removes
+  images with no attached container, so `weather-registry`,
+  `weather-ci-runner`, and `open-webui` are untouched.
+- **Worker VM** (k3s/containerd images): provisioned automatically via
+  cloud-init (`k3s-image-prune.timer`, Sundays 03:30, runs
+  `k3s crictl rmi --prune`) -- nothing to do for new VMs. For an
+  already-running worker that predates this, install it manually with the
+  same unit files (see `terraform/01-infrastructure/cloud-init/worker-user-data.yaml.tftpl`).
+- If a VM's qcow2 disk has already ballooned from before pruning was in
+  place, pruning inside the guest won't shrink the file on the host --
+  compact it separately (`virsh shutdown <vm>`, then
+  `sudo virt-sparsify --in-place /var/lib/libvirt/images/weather-k3s/<vm>.qcow2`,
+  needs `libguestfs-tools`).
+
 ## Notes / things you'll likely want to change later
 
 - Postgres/Kafka/Azurite are single-replica with no backups — fine for a
