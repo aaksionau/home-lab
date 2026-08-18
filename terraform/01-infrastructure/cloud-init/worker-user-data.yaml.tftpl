@@ -19,6 +19,32 @@ write_files:
           endpoint:
             - "http://${registry_host}"
 
+  # CronJob pods (stocks-pipeline etc.) pull a freshly-tagged image on every
+  # run, and containerd never garbage-collects old tags on its own -- left
+  # unchecked this fills the VM's disk (hit 25G/145G before this was added).
+  - path: /etc/systemd/system/k3s-image-prune.service
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=Prune unused k3s/containerd images
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/bin/k3s crictl rmi --prune
+
+  - path: /etc/systemd/system/k3s-image-prune.timer
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=Run k3s image prune weekly
+
+      [Timer]
+      OnCalendar=Sun *-*-* 03:30:00
+      Persistent=true
+
+      [Install]
+      WantedBy=timers.target
+
 runcmd:
   - mkdir -p /etc/rancher/k3s
   - >
@@ -27,3 +53,5 @@ runcmd:
     K3S_URL="https://${control_plane_ip}:6443"
     K3S_TOKEN="${k3s_token}"
     sh -s - agent
+  - systemctl daemon-reload
+  - systemctl enable --now k3s-image-prune.timer
