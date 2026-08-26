@@ -1,0 +1,5 @@
+# Copy to terraform.tfvars and fill in.
+# registry_host is not set here -- it's read automatically from
+# 01-infrastructure's state (see remote_state.tf).
+
+web_image_tag = "latest"
