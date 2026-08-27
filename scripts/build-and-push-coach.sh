@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Builds the coach-web image and pushes it to the insecure registry
-# provisioned by terraform/01-infrastructure (registry.tf), running on the
-# Ubuntu server at ${REGISTRY_HOST}.
+# Builds the coach images (coach-web + coach-garmin-ingestion) and pushes them to
+# the insecure registry provisioned by terraform/01-infrastructure (registry.tf),
+# running on the Ubuntu server at ${REGISTRY_HOST}.
 #
 # Usage:
 #   REGISTRY_HOST=192.168.1.50:5000 COACH_REPO=/path/to/personal-coach ./build-and-push-coach.sh [tag]
@@ -17,12 +17,21 @@ REGISTRY_HOST="${REGISTRY_HOST:?set REGISTRY_HOST, e.g. 192.168.1.50:5000}"
 COACH_REPO="${COACH_REPO:?set COACH_REPO to the personal-coach checkout path}"
 TAG="${1:-latest}"
 
-image="${REGISTRY_HOST}/coach/coach-web:${TAG}"
+# Both Dockerfiles use the repo root as the build context -- they reference
+# sibling projects under src/.
+web_image="${REGISTRY_HOST}/coach/coach-web:${TAG}"
+garmin_image="${REGISTRY_HOST}/coach/coach-garmin-ingestion:${TAG}"
 
-echo "==> Building ${image}"
-docker build -f "${COACH_REPO}/src/Coach.Web/Dockerfile" -t "${image}" "${COACH_REPO}/src/Coach.Web"
+echo "==> Building ${web_image}"
+docker build -f "${COACH_REPO}/src/Coach.Web/Dockerfile" -t "${web_image}" "${COACH_REPO}"
 
-echo "==> Pushing ${image}"
-docker push "${image}"
+echo "==> Building ${garmin_image}"
+docker build -f "${COACH_REPO}/src/Coach.GarminIngestion/Dockerfile" -t "${garmin_image}" "${COACH_REPO}"
 
-echo "Done. Set web_image_tag = \"${TAG}\" in terraform/04-coach-platform/terraform.tfvars and re-apply."
+echo "==> Pushing ${web_image}"
+docker push "${web_image}"
+
+echo "==> Pushing ${garmin_image}"
+docker push "${garmin_image}"
+
+echo "Done. Set web_image_tag = \"${TAG}\" and garmin_ingestion_image_tag = \"${TAG}\" in terraform/04-coach-platform/terraform.tfvars and re-apply."

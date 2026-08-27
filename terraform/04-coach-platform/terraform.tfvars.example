@@ -2,4 +2,10 @@
 # registry_host is not set here -- it's read automatically from
 # 01-infrastructure's state (see remote_state.tf).
 
-web_image_tag = "latest"
+web_image_tag              = "latest"
+garmin_ingestion_image_tag = "latest"
+
+# Garmin Connect account for the daily ingestion CronJob. The account must have
+# MFA disabled (see docs/garmin-ingestion-setup.md in the personal-coach repo).
+garmin_email    = "you@example.com"
+garmin_password = "..."

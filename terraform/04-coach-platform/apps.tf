@@ -3,7 +3,8 @@ locals {
   registry_host = data.terraform_remote_state.infra.outputs.registry_host
 
   images = {
-    web = "${local.registry_host}/coach/coach-web:${var.web_image_tag}"
+    web              = "${local.registry_host}/coach/coach-web:${var.web_image_tag}"
+    garmin_ingestion = "${local.registry_host}/coach/coach-garmin-ingestion:${var.garmin_ingestion_image_tag}"
   }
 }
 
@@ -58,6 +59,90 @@ resource "kubernetes_deployment_v1" "web" {
             }
             initial_delay_seconds = 5
             period_seconds        = 10
+          }
+        }
+      }
+    }
+  }
+}
+
+# --- coach-garmin-ingestion (daily batch job: log into Garmin -> upsert daily metrics) ---
+
+resource "kubernetes_cron_job_v1" "garmin_ingestion" {
+  metadata {
+    name      = "coach-garmin-ingestion"
+    namespace = local.ns
+  }
+
+  spec {
+    schedule = var.garmin_ingestion_schedule
+    timezone = "Etc/UTC"
+
+    # One daily pull; a run should never overlap the next.
+    concurrency_policy = "Forbid"
+
+    successful_jobs_history_limit = 3
+    failed_jobs_history_limit     = 3
+
+    job_template {
+      metadata {}
+
+      spec {
+        # The job aborts its own run on a systemic failure (bad login, API change)
+        # and exits non-zero, so one retry is enough to ride out a transient blip.
+        backoff_limit = 1
+
+        template {
+          metadata {
+            labels = { app = "coach-garmin-ingestion" }
+          }
+
+          spec {
+            restart_policy = "Never"
+
+            container {
+              name  = "coach-garmin-ingestion"
+              image = local.images.garmin_ingestion
+
+              env {
+                name = "ConnectionStrings__CoachDb"
+                value_from {
+                  secret_key_ref {
+                    name = kubernetes_secret_v1.postgres.metadata[0].name
+                    key  = "CONNECTION_STRING"
+                  }
+                }
+              }
+              env {
+                name = "Garmin__Email"
+                value_from {
+                  secret_key_ref {
+                    name = kubernetes_secret_v1.garmin.metadata[0].name
+                    key  = "EMAIL"
+                  }
+                }
+              }
+              env {
+                name = "Garmin__Password"
+                value_from {
+                  secret_key_ref {
+                    name = kubernetes_secret_v1.garmin.metadata[0].name
+                    key  = "PASSWORD"
+                  }
+                }
+              }
+
+              resources {
+                requests = {
+                  cpu    = "100m"
+                  memory = "128Mi"
+                }
+                limits = {
+                  cpu    = "500m"
+                  memory = "512Mi"
+                }
+              }
+            }
           }
         }
       }
