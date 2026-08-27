@@ -9,3 +9,25 @@ garmin_ingestion_image_tag = "latest"
 # MFA disabled (see docs/garmin-ingestion-setup.md in the personal-coach repo).
 garmin_email    = "you@example.com"
 garmin_password = "..."
+
+# --- coach-web application config -----------------------------------------
+# Copy from the personal-coach user-secrets store:
+#   dotnet user-secrets list --project src/Coach.Web
+# Each key maps 1:1, e.g. "AzureAi:ApiKey" -> azure_ai_api_key. See the
+# docs/*-setup.md files in personal-coach for how to obtain the Google
+# Calendar and SMS credentials.
+
+azure_ai_endpoint        = "https://<resource-name>.openai.azure.com/"
+azure_ai_api_key         = "..."
+azure_ai_deployment_name = "gpt-4o"
+
+google_calendar_client_id     = "....apps.googleusercontent.com"
+google_calendar_client_secret = "GOCSPX-..."
+google_calendar_refresh_token = "1//04..."
+# google_calendar_id defaults to "primary"
+
+sms_smtp_username = "you@gmail.com"
+sms_smtp_password = "..." # Gmail app password, not the account password
+sms_to_number     = "+16125551234"
+
+# digest_timezone_id / nudge_timezone_id default to "America/Chicago"
