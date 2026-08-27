@@ -39,12 +39,13 @@ echo "==> Reading registry_host from 01-infrastructure state"
 REGISTRY_HOST="$(terraform -chdir="${HOME_SERVER_DIR}/terraform/01-infrastructure" output -raw registry_host)"
 echo "    registry_host=${REGISTRY_HOST}"
 
-echo "==> Building and pushing coach-web at tag ${TAG}"
+echo "==> Building and pushing coach images at tag ${TAG}"
 REGISTRY_HOST="${REGISTRY_HOST}" COACH_REPO="${COACH_REPO}" \
   "${SCRIPT_DIR}/build-and-push-coach.sh" "${TAG}"
 
-echo "==> Applying terraform/04-coach-platform with web_image_tag=${TAG}"
+echo "==> Applying terraform/04-coach-platform with image tags=${TAG}"
 terraform -chdir="${HOME_SERVER_DIR}/terraform/04-coach-platform" apply \
-  -var="web_image_tag=${TAG}" ${AUTO_APPROVE}
+  -var="web_image_tag=${TAG}" \
+  -var="garmin_ingestion_image_tag=${TAG}" ${AUTO_APPROVE}
 
-echo "Done. coach-web is now on tag ${TAG}."
+echo "Done. coach-web and coach-garmin-ingestion are now on tag ${TAG}."
