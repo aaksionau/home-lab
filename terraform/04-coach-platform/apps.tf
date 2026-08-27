@@ -22,7 +22,19 @@ resource "kubernetes_deployment_v1" "web" {
     selector { match_labels = { app = "coach-web" } }
 
     template {
-      metadata { labels = { app = "coach-web" } }
+      metadata {
+        labels = { app = "coach-web" }
+
+        # env_from doesn't roll the pod when the ConfigMap/Secret contents
+        # change, so fold their hashes into the pod template -- a changed
+        # value in terraform.tfvars then forces a fresh rollout on apply.
+        annotations = {
+          "coach.config/checksum" = sha256(jsonencode({
+            config = kubernetes_config_map_v1.coach_web.data
+            secret = kubernetes_secret_v1.coach_web.data
+          }))
+        }
+      }
 
       spec {
         container {
@@ -30,6 +42,19 @@ resource "kubernetes_deployment_v1" "web" {
           image = local.images.web
 
           port { container_port = 8080 }
+
+          # Application config (Azure OpenAI, Google Calendar, SMS, schedules,
+          # ASPNETCORE_ENVIRONMENT) -- see app-config.tf.
+          env_from {
+            config_map_ref {
+              name = kubernetes_config_map_v1.coach_web.metadata[0].name
+            }
+          }
+          env_from {
+            secret_ref {
+              name = kubernetes_secret_v1.coach_web.metadata[0].name
+            }
+          }
 
           env {
             name = "ConnectionStrings__CoachDb"
