@@ -7,6 +7,18 @@ locals {
   }
 }
 
+resource "kubernetes_secret_v1" "azure_foundry" {
+  metadata {
+    name      = "azure-foundry-credentials"
+    namespace = local.ns
+  }
+
+  data = {
+    ENDPOINT = var.azure_foundry_endpoint
+    API_KEY  = var.azure_foundry_api_key
+  }
+}
+
 # --- checkscanner-web (Blazor Server: upload receipt photos, persist, browse list) ---
 
 resource "kubernetes_deployment_v1" "web" {
@@ -42,6 +54,28 @@ resource "kubernetes_deployment_v1" "web" {
           env {
             name  = "PhotoStorage__BasePath"
             value = "/data/photos"
+          }
+          env {
+            name = "AzureFoundry__Endpoint"
+            value_from {
+              secret_key_ref {
+                name = kubernetes_secret_v1.azure_foundry.metadata[0].name
+                key  = "ENDPOINT"
+              }
+            }
+          }
+          env {
+            name = "AzureFoundry__ApiKey"
+            value_from {
+              secret_key_ref {
+                name = kubernetes_secret_v1.azure_foundry.metadata[0].name
+                key  = "API_KEY"
+              }
+            }
+          }
+          env {
+            name  = "AzureFoundry__DeploymentName"
+            value = var.azure_foundry_deployment_name
           }
 
           volume_mount {
