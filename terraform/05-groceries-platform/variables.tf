@@ -26,3 +26,21 @@ variable "web_node_port" {
   type        = number
   default     = 30500
 }
+
+variable "azure_foundry_endpoint" {
+  description = "Azure AI Foundry project endpoint used for receipt parsing."
+  type        = string
+  sensitive   = true
+}
+
+variable "azure_foundry_api_key" {
+  description = "Azure AI Foundry API key used for receipt parsing."
+  type        = string
+  sensitive   = true
+}
+
+variable "azure_foundry_deployment_name" {
+  description = "Azure AI Foundry model deployment name."
+  type        = string
+  default     = "gpt-4o-mini"
+}
