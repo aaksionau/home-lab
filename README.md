@@ -27,17 +27,21 @@ Ubuntu host (KVM/libvirt)
         │   ├── prometheus     (ClusterIP — scrapes otel-collector)
         │   ├── loki           (ClusterIP — logs, via otel-collector)
         │   └── grafana        (NodePort 30300 — dashboards + log explore)
-        └── namespace: stocks
-            ├── postgres              (dedicated instance, not shared with weather)
-            ├── stocks-pipeline         (CronJob, once daily — no ports)
-            ├── stocks-news-pipeline    (CronJob, every 4 hours — no ports)
-            ├── stocks-company-pipeline (CronJob, weekly — no ports)
-            └── stocks-web              (NodePort 30200 — Streamlit dashboard)
+        ├── namespace: stocks
+        │   ├── postgres              (dedicated instance, not shared with weather)
+        │   ├── stocks-pipeline         (CronJob, once daily — no ports)
+        │   ├── stocks-news-pipeline    (CronJob, every 4 hours — no ports)
+        │   ├── stocks-company-pipeline (CronJob, weekly — no ports)
+        │   └── stocks-web              (NodePort 30200 — Streamlit dashboard)
+        └── namespace: groceries
+            ├── postgres              (dedicated instance, not shared with weather/stocks)
+            └── checkscanner-web        (NodePort 30500 — Blazor receipt scanner; PVC-backed photo storage)
 ```
 
-The `stocks` namespace has no OTEL/Prometheus/Loki/Grafana wiring by design
--- `kubectl logs`/Job status is sufficient to diagnose these batch jobs.
-See `terraform/03-stocks-platform`.
+The `stocks` and `groceries` namespaces have no OTEL/Prometheus/Loki/Grafana
+wiring by design -- `kubectl logs`/Job status is sufficient to diagnose these
+apps at this scale. See `terraform/03-stocks-platform` and
+`terraform/05-groceries-platform`.
 
 Both VMs attach to a real Linux bridge (`br0`) on the host, not macvtap.
 Macvtap was the original design (avoids touching host networking at all),
